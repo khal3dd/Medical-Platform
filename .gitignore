@@ -1,0 +1,64 @@
+# ============================================================
+# Liver Care Chatbot — .gitignore
+# ============================================================
+
+# --- Environment & Secrets ---
+.env
+*.env
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+wheels/
+
+# --- Virtual Environments ---
+venv/
+.venv/
+env/
+ENV/
+.env/
+
+# --- IDE & Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# --- Testing ---
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage.xml
+*.cover
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Session Dumps (disk utility output) ---
+session_dumps/
+
+# --- Misc ---
+*.bak
+*.tmp

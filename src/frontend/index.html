@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Liver Care Chatbot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <div class="brand-icon">⚕️</div>
+        <div class="brand-text">
+          <h1>Liver Care</h1>
+          <span>Medical Assistant</span>
+        </div>
+      </div>
+      <div class="status-badge">
+        <span class="status-dot"></span>
+        AI Assistant Online
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      <div class="nav-item active">
+        <span class="nav-icon">💬</span>
+        Chat Assistant
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">📋</span>
+        Health Guidelines
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">🥗</span>
+        Diet & Nutrition
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">💊</span>
+        Medications Info
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">📞</span>
+        Emergency Contacts
+      </div>
+
+      <div class="nav-section-label" style="margin-top:20px;">Information</div>
+      <div class="nav-item">
+        <span class="nav-icon">ℹ️</span>
+        About This Tool
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">🔒</span>
+        Privacy Notice
+      </div>
+    </nav>
+
+    <div class="sidebar-session">
+      <div class="session-row">
+        <span class="session-label-text">SESSION ID</span>
+        <span class="session-id-text" id="session-id-display">—</span>
+      </div>
+      <button class="btn-clear" onclick="clearSession()">
+        🗑️ Clear Conversation
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===================== MAIN CHAT ===================== -->
+  <main class="chat-main">
+
+    <div class="chat-topbar">
+      <div class="topbar-left">
+        <div class="topbar-avatar">⚕️</div>
+        <div class="topbar-info">
+          <h2>Liver Care Assistant</h2>
+          <p>● Online — Ready to help</p>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-badge">Educational Only</span>
+      </div>
+    </div>
+
+    <div class="disclaimer-bar">
+      ⚠️ <strong>Medical Disclaimer:</strong>&nbsp;
+      This tool provides general educational information only — not a substitute for professional medical advice. Always consult your doctor.
+    </div>
+
+    <div class="messages-area" id="messages-area">
+      <div class="welcome-state" id="welcome-state">
+        <div class="welcome-icon-wrap">⚕️</div>
+        <h3>How can I help you today?</h3>
+        <p>I'm your Liver Care Assistant. Ask me about liver health, diet, lifestyle tips, or common liver-related questions.</p>
+        <div class="welcome-chips">
+          <div class="chip" onclick="sendChip('What foods are good for liver health?')">🥦 Liver-friendly foods</div>
+          <div class="chip" onclick="sendChip('What are early signs of liver disease?')">🔍 Early warning signs</div>
+          <div class="chip" onclick="sendChip('How does alcohol affect the liver?')">🚫 Alcohol & the liver</div>
+          <div class="chip" onclick="sendChip('What is fatty liver disease?')">📖 Fatty liver explained</div>
+          <div class="chip" onclick="sendChip('How can I improve my liver health?')">💪 Improve liver health</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-zone">
+      <div class="input-wrap">
+        <textarea
+          id="user-input"
+          placeholder="Ask about liver health, diet, symptoms..."
+          rows="1"
+          autocomplete="off"
+        ></textarea>
+        <button id="send-btn" onclick="sendMessage()" title="Send message">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
+      </div>
+      <div class="input-hint">Press Enter to send &nbsp;·&nbsp; Shift+Enter for new line</div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  let API_BASE_URL = "http://localhost:8000";
+
+  fetch("/static/config.json")
+    .then(r => r.json())
+    .then(cfg => { if (cfg?.api_base_url) API_BASE_URL = cfg.api_base_url; })
+    .catch(() => {});
+
+  function genId() { return "sess-" + Math.random().toString(36).slice(2, 10); }
+
+  let sessionId = sessionStorage.getItem("liver_session") || genId();
+  sessionStorage.setItem("liver_session", sessionId);
+  document.getElementById("session-id-display").textContent = sessionId;
+
+  const messagesArea = document.getElementById("messages-area");
+  const userInput    = document.getElementById("user-input");
+  const sendBtn      = document.getElementById("send-btn");
+
+  function removeWelcome() {
+    document.getElementById("welcome-state")?.remove();
+  }
+
+  function scrollBottom() {
+    messagesArea.scrollTop = messagesArea.scrollHeight;
+  }
+
+  function now() {
+    return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function appendMessage(role, text) {
+    removeWelcome();
+    const row = document.createElement("div");
+    row.className = `msg-row ${role === "user" ? "user" : role}`;
+
+    const avatar = document.createElement("div");
+    avatar.className = `msg-avatar ${role === "user" ? "user" : "bot"}`;
+    avatar.textContent = role === "user" ? "👤" : "🫀";
+
+    const col = document.createElement("div");
+    const bubble = document.createElement("div");
+    bubble.className = `msg-bubble ${role}`;
+    bubble.textContent = text;
+
+    const time = document.createElement("div");
+    time.className = "msg-time";
+    time.textContent = now();
+
+    col.appendChild(bubble);
+    col.appendChild(time);
+    row.appendChild(avatar);
+    row.appendChild(col);
+    messagesArea.appendChild(row);
+    scrollBottom();
+  }
+
+  function showTyping() {
+    removeWelcome();
+    const row = document.createElement("div");
+    row.className = "msg-row bot";
+    row.id = "typing-row";
+
+    const avatar = document.createElement("div");
+    avatar.className = "msg-avatar bot";
+    avatar.textContent = "🫀";
+
+    const bubble = document.createElement("div");
+    bubble.className = "typing-bubble";
+    bubble.innerHTML = `<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>`;
+
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    messagesArea.appendChild(row);
+    scrollBottom();
+  }
+
+  function hideTyping() {
+    document.getElementById("typing-row")?.remove();
+  }
+
+  function setLoading(on) {
+    userInput.disabled = on;
+    sendBtn.disabled   = on;
+  }
+
+  userInput.addEventListener("input", function () {
+    this.style.height = "auto";
+    this.style.height = Math.min(this.scrollHeight, 120) + "px";
+  });
+
+  userInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+
+  function sendChip(text) {
+    userInput.value = text;
+    sendMessage();
+  }
+
+  async function sendMessage() {
+    const msg = userInput.value.trim();
+    if (!msg) return;
+
+    appendMessage("user", msg);
+    userInput.value = "";
+    userInput.style.height = "auto";
+    setLoading(true);
+    showTyping();
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, message: msg }),
+      });
+
+      hideTyping();
+
+      if (!res.ok) {
+        let detail = "An error occurred. Please try again.";
+        try { const e = await res.json(); if (e?.detail) detail = e.detail; } catch (_) {}
+        appendMessage("error", "⚠️ " + detail);
+        return;
+      }
+
+      const data = await res.json();
+      appendMessage("bot", data.reply);
+
+    } catch (err) {
+      hideTyping();
+      appendMessage("error", "⚠️ Could not reach the server at: " + API_BASE_URL);
+      console.error(err);
+    } finally {
+      setLoading(false);
+      userInput.focus();
+    }
+  }
+
+  async function clearSession() {
+    if (!confirm("Clear the conversation history?")) return;
+
+    try {
+      await fetch(`${API_BASE_URL}/api/v1/chat/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+    } catch (_) {}
+
+    messagesArea.innerHTML = `
+      <div class="welcome-state" id="welcome-state">
+        <div class="welcome-icon-wrap">🫀</div>
+        <h3>Conversation cleared</h3>
+        <p>How can I help you today?</p>
+        <div class="welcome-chips">
+          <div class="chip" onclick="sendChip('What foods are good for liver health?')">🥦 Liver-friendly foods</div>
+          <div class="chip" onclick="sendChip('What are early signs of liver disease?')">🔍 Early warning signs</div>
+          <div class="chip" onclick="sendChip('How does alcohol affect the liver?')">🚫 Alcohol & the liver</div>
+          <div class="chip" onclick="sendChip('What is fatty liver disease?')">📖 Fatty liver explained</div>
+        </div>
+      </div>`;
+
+    sessionId = genId();
+    sessionStorage.setItem("liver_session", sessionId);
+    document.getElementById("session-id-display").textContent = sessionId;
+  }
+</script>
+</body>
+</html>

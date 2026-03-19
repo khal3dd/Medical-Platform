@@ -1,0 +1,81 @@
+"""
+Orchestrator — المايسترو اللي بيربط الـ RAG بالـ Chat.
+
+الخطوات:
+1. Retrieval  — يحول السؤال لـ vector ويجيب أقرب chunks من ChromaDB
+2. Augmentation — يجمع الـ chunks في context واحد
+3. Generation — يبعت السؤال + الـ context للـ ChatService
+"""
+
+from core.logger import get_logger
+from providers.embeddings import EmbeddingsProvider
+from providers.vector_store import VectorStore
+from services.chat_service import ChatService
+
+logger = get_logger(__name__)
+
+
+class Orchestrator:
+
+    def __init__(
+        self,
+        embeddings_provider: EmbeddingsProvider,
+        vector_store: VectorStore,
+        chat_service: ChatService,
+    ) -> None:
+        self._embeddings = embeddings_provider
+        self._vector_store = vector_store
+        self._chat_service = chat_service
+        logger.info("Orchestrator initialized.")
+
+    def handle_message(self, session_id: str, user_message: str) -> dict:
+        """
+        الدالة الرئيسية — بتاخد سؤال وترجع رد مدعوم بالـ context.
+
+        Args:
+            session_id:   الـ session بتاع المستخدم
+            user_message: سؤال المستخدم
+
+        Returns:
+            dict فيه: session_id، reply، turn_count، وعدد الـ chunks اللي اتجابوا
+        """
+
+        # 1. Retrieval — حول السؤال لـ vector وجيب الـ chunks
+        logger.info(f"Retrieving context | session={session_id}")
+
+        try:
+            query_vector = self._embeddings.embed_one(user_message)
+            chunks = self._vector_store.query(query_vector)
+        except Exception as e:
+            logger.error(f"Retrieval failed | session={session_id} | error={e}")
+            raise RuntimeError(f"Retrieval failed: {e}") from e
+
+        # 2. Augmentation — جمّع الـ chunks في context
+        context = self._build_context(chunks)
+
+        logger.info(
+            f"Context built | session={session_id} | chunks={len(chunks)}"
+        )
+
+        # 3. Generation — ابعت للـ ChatService مع الـ context
+        result = self._chat_service.handle_message(
+            session_id=session_id,
+            user_message=user_message,
+            context=context if chunks else None,
+        )
+
+        result["retrieved_chunks"] = len(chunks)
+        return result
+
+    def _build_context(self, chunks: list[str]) -> str:
+        """
+        بيجمع الـ chunks في نص واحد منظم يتحط في الـ prompt.
+        """
+        if not chunks:
+            return ""
+
+        parts = []
+        for i, chunk in enumerate(chunks, 1):
+            parts.append(f"[{i}] {chunk}")
+
+        return "\n\n".join(parts)
