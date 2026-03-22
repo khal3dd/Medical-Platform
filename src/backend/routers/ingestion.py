@@ -44,22 +44,19 @@ def set_ingestion_service(service: IngestionService) -> None:
 # ------------------------------------------------------------------
 
 @ingestion_router.post(
-    "/upload",
-    summary="رفع PDF وإضافته للـ Vector Store",
+    "/upload"
 )
 async def upload_pdf(
     file: UploadFile = File(...),
     service: IngestionService = Depends(get_ingestion_service),
 ) -> dict:
 
-    # تحقق إن الملف PDF
     if not file.filename.endswith(".pdf"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=ResponseSignal.FILE_TYPE_NOT_SUPPORTED.value,
         )
 
-    # احفظ الملف على الـ disk مؤقتاً
     upload_dir = Path(settings.upload_dir)
     upload_dir.mkdir(parents=True, exist_ok=True)
     file_path = upload_dir / file.filename
@@ -76,7 +73,7 @@ async def upload_pdf(
             detail=ResponseSignal.FILE_UPLOAD_FAILED.value,
         )
 
-    # ابعت للـ IngestionService
+    
     try:
         result = service.ingest_pdf(str(file_path))
     except ValueError as e:
@@ -98,8 +95,7 @@ async def upload_pdf(
 
 
 @ingestion_router.get(
-    "/status",
-    summary="عدد الـ documents المحفوظة في الـ Vector Store",
+    "/status"
 )
 async def vector_store_status(
     service: IngestionService = Depends(get_ingestion_service),
@@ -110,8 +106,7 @@ async def vector_store_status(
 
 
 @ingestion_router.delete(
-    "/document/{file_name}",
-    summary="مسح document معين من الـ Vector Store",
+    "/document/{file_name}"
 )
 async def delete_document(
     file_name: str,
@@ -123,4 +118,4 @@ async def delete_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Document '{file_name}' not found in vector store.",
         )
-    return {"status": "success", "message": f"Document '{file_name}' deleted."}    
+    return {"status": "success", "message": f"Document '{file_name}' deleted."}     
