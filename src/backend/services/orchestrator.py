@@ -1,11 +1,3 @@
-"""
-Orchestrator — المايسترو اللي بيربط الـ RAG بالـ Chat.
-
-الخطوات:
-1. Retrieval  — يحول السؤال لـ vector ويجيب أقرب chunks من ChromaDB
-2. Augmentation — يجمع الـ chunks في context واحد
-3. Generation — يبعت السؤال + الـ context للـ ChatService
-"""
 
 from core.logger import get_logger
 from providers.embeddings import EmbeddingsProvider
@@ -29,18 +21,8 @@ class Orchestrator:
         logger.info("Orchestrator initialized.")
 
     def handle_message(self, session_id: str, user_message: str) -> dict:
-        """
-        الدالة الرئيسية — بتاخد سؤال وترجع رد مدعوم بالـ context.
+    
 
-        Args:
-            session_id:   الـ session بتاع المستخدم
-            user_message: سؤال المستخدم
-
-        Returns:
-            dict فيه: session_id، reply، turn_count، وعدد الـ chunks اللي اتجابوا
-        """
-
-        # 1. Retrieval — حول السؤال لـ vector وجيب الـ chunks
         logger.info(f"Retrieving context | session={session_id}")
 
         try:
