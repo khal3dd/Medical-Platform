@@ -62,3 +62,6 @@ session_dumps/
 # --- Misc ---
 *.bak
 *.tmp
+
+
+logs/
