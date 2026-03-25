@@ -24,12 +24,13 @@ _FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("=== Liver Care Chatbot starting up ===")
+    logger.info("=== Medical Platform starting up ===")
     logger.info(f"Model: {settings.llm_model}")
     logger.info(f"Max tokens: {settings.llm_max_tokens}")
     logger.info(f"Temperature: {settings.llm_temperature}")
     logger.info(f"Session max turns: {settings.session_max_turns}")
     logger.info(f"Embedding model: {settings.embedding_model}")
+    logger.info(f"Allowed tenants: {settings.allowed_tenants}")
     logger.info(f"Frontend served from: {_FRONTEND_DIR}")
 
     # Providers
@@ -57,17 +58,17 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    logger.info("=== Liver Care Chatbot shutting down ===")
+    logger.info("=== Medical Platform shutting down ===")
 
 
 app = FastAPI(
-    title="Liver Care Chatbot API",
+    title="Medical Platform API",
     description=(
-        "A safe, educational AI chatbot that helps liver patients with "
-        "general health information and lifestyle guidance. "
+        "A safe, educational AI platform that helps patients across multiple "
+        "medical departments with general health information and lifestyle guidance. "
         "Not a diagnostic tool. Not a replacement for medical advice."
     ),
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",

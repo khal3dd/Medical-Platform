@@ -33,7 +33,6 @@ class ChatService:
 
     def __init__(self, llm_provider: LLMProvider) -> None:
         self._llm = llm_provider
-        self._system_prompt = build_system_prompt()
         self._sessions: dict[str, ChatSession] = {}
         logger.info("ChatService initialized.")
 
@@ -42,20 +41,23 @@ class ChatService:
         session_id: str,
         user_message: str,
         context: str | None = None,
+        tenant_id: str = "general",
     ) -> dict:
         session = self._get_session(session_id)
         clean_message = format_user_message(user_message)
 
+        system_prompt = build_system_prompt(tenant_id)
+
         if context:
             final_message = build_rag_user_message(clean_message, context)
-            logger.info(f"RAG mode | session={session_id} | turns={session.turn_count}")
+            logger.info(f"RAG mode | tenant={tenant_id} | session={session_id} | turns={session.turn_count}")
         else:
             final_message = clean_message
-            logger.info(f"General mode | session={session_id} | turns={session.turn_count}")
+            logger.info(f"General mode | tenant={tenant_id} | session={session_id} | turns={session.turn_count}")
 
         try:
             reply = self._llm.chat(
-                system_prompt=self._system_prompt,
+                system_prompt=system_prompt,
                 history=session.messages,
                 user_message=final_message,
             )
@@ -66,7 +68,7 @@ class ChatService:
         session.add_turn(clean_message, reply)
 
         logger.info(
-            f"Reply generated | session={session_id} "
+            f"Reply generated | tenant={tenant_id} | session={session_id} "
             f"| turns={session.turn_count} "
             f"| reply_len={len(reply)}"
         )

@@ -65,3 +65,7 @@ session_dumps/
 
 
 logs/
+
+# --- Vector Database (RAG) ---
+vector_store/
+*.sqlite3

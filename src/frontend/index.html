@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Liver Care Chatbot</title>
+  <title>Medical Platform</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="/static/style.css" />
@@ -18,8 +18,8 @@
       <div class="sidebar-brand">
         <div class="brand-icon">⚕️</div>
         <div class="brand-text">
-          <h1>Liver Care</h1>
-          <span>Medical Assistant</span>
+          <h1>Medical Platform</h1>
+          <span>AI Medical Assistant</span>
         </div>
       </div>
       <div class="status-badge">
@@ -29,7 +29,17 @@
     </div>
 
     <nav class="sidebar-nav">
-      <div class="nav-section-label">Navigation</div>
+
+      <div class="nav-section-label">Department</div>
+      <div class="tenant-selector">
+        <select id="tenant-select" onchange="onTenantChange()">
+          <option value="liver">🫀 Liver Care</option>
+          <option value="cardiology">❤️ Cardiology</option>
+          <option value="nephrology">🫘 Nephrology</option>
+        </select>
+      </div>
+
+      <div class="nav-section-label" style="margin-top:20px;">Navigation</div>
       <div class="nav-item active">
         <span class="nav-icon">💬</span>
         Chat Assistant
@@ -80,7 +90,7 @@
       <div class="topbar-left">
         <div class="topbar-avatar">⚕️</div>
         <div class="topbar-info">
-          <h2>Liver Care Assistant</h2>
+          <h2 id="topbar-title">Liver Care Assistant</h2>
           <p>● Online — Ready to help</p>
         </div>
       </div>
@@ -98,8 +108,8 @@
       <div class="welcome-state" id="welcome-state">
         <div class="welcome-icon-wrap">⚕️</div>
         <h3>How can I help you today?</h3>
-        <p>I'm your Liver Care Assistant. Ask me about liver health, diet, lifestyle tips, or common liver-related questions.</p>
-        <div class="welcome-chips">
+        <p id="welcome-text">I'm your Liver Care Assistant. Ask me about liver health, diet, lifestyle tips, or common liver-related questions.</p>
+        <div class="welcome-chips" id="welcome-chips">
           <div class="chip" onclick="sendChip('What foods are good for liver health?')">🥦 Liver-friendly foods</div>
           <div class="chip" onclick="sendChip('What are early signs of liver disease?')">🔍 Early warning signs</div>
           <div class="chip" onclick="sendChip('How does alcohol affect the liver?')">🚫 Alcohol & the liver</div>
@@ -113,7 +123,7 @@
       <div class="input-wrap">
         <textarea
           id="user-input"
-          placeholder="Ask about liver health, diet, symptoms..."
+          placeholder="Ask your medical question..."
           rows="1"
           autocomplete="off"
         ></textarea>
@@ -130,6 +140,7 @@
 </div>
 
 <script>
+  // ── Config ──────────────────────────────────────────────
   let API_BASE_URL = "http://localhost:8000";
 
   fetch("/static/config.json")
@@ -137,12 +148,70 @@
     .then(cfg => { if (cfg?.api_base_url) API_BASE_URL = cfg.api_base_url; })
     .catch(() => {});
 
+  // ── Tenant ──────────────────────────────────────────────
+  const TENANT_CONFIG = {
+    liver: {
+      title: "Liver Care Assistant",
+      welcome: "I'm your Liver Care Assistant. Ask me about liver health, diet, lifestyle tips, or common liver-related questions.",
+      chips: [
+        { label: "🥦 Liver-friendly foods", msg: "What foods are good for liver health?" },
+        { label: "🔍 Early warning signs",  msg: "What are early signs of liver disease?" },
+        { label: "🚫 Alcohol & the liver",  msg: "How does alcohol affect the liver?" },
+        { label: "📖 Fatty liver explained", msg: "What is fatty liver disease?" },
+      ]
+    },
+    cardiology: {
+      title: "Cardiology Assistant",
+      welcome: "I'm your Cardiology Assistant. Ask me about heart health, cardiovascular conditions, and lifestyle tips for a healthy heart.",
+      chips: [
+        { label: "❤️ Heart-healthy foods",   msg: "What foods are good for heart health?" },
+        { label: "🔍 Signs of heart disease", msg: "What are early signs of heart disease?" },
+        { label: "🚫 Risk factors",           msg: "What are the main risk factors for heart disease?" },
+        { label: "💊 Blood pressure",         msg: "How can I manage high blood pressure?" },
+      ]
+    },
+    nephrology: {
+      title: "Nephrology Assistant",
+      welcome: "I'm your Nephrology Assistant. Ask me about kidney health, renal conditions, and lifestyle tips for healthy kidneys.",
+      chips: [
+        { label: "🫘 Kidney-friendly foods", msg: "What foods are good for kidney health?" },
+        { label: "🔍 Signs of kidney disease", msg: "What are early signs of kidney disease?" },
+        { label: "💧 Hydration tips",          msg: "How much water should I drink for kidney health?" },
+        { label: "🚫 Foods to avoid",          msg: "What foods should I avoid with kidney disease?" },
+      ]
+    },
+  };
+
+  function getTenantId() {
+    return document.getElementById("tenant-select").value;
+  }
+
+  function onTenantChange() {
+    const tenant = getTenantId();
+    const config = TENANT_CONFIG[tenant];
+
+    // تحديث الـ topbar
+    document.getElementById("topbar-title").textContent = config.title;
+
+    // تحديث الـ welcome state لو موجود
+    const welcomeText = document.getElementById("welcome-text");
+    const welcomeChips = document.getElementById("welcome-chips");
+    if (welcomeText) welcomeText.textContent = config.welcome;
+    if (welcomeChips) {
+      welcomeChips.innerHTML = config.chips
+        .map(c => `<div class="chip" onclick="sendChip('${c.msg}')">${c.label}</div>`)
+        .join("");
+    }
+  }
+
+  // ── Session ──────────────────────────────────────────────
   function genId() { return "sess-" + Math.random().toString(36).slice(2, 10); }
 
-  let sessionId = sessionStorage.getItem("liver_session") || genId();
-  sessionStorage.setItem("liver_session", sessionId);
+  let sessionId = sessionStorage.getItem("medical_session") || genId();
+  sessionStorage.setItem("medical_session", sessionId);
   document.getElementById("session-id-display").textContent = sessionId;
 
+  // ── DOM refs ─────────────────────────────────────────────
   const messagesArea = document.getElementById("messages-area");
   const userInput    = document.getElementById("user-input");
   const sendBtn      = document.getElementById("send-btn");
@@ -166,7 +235,7 @@
 
     const avatar = document.createElement("div");
     avatar.className = `msg-avatar ${role === "user" ? "user" : "bot"}`;
-    avatar.textContent = role === "user" ? "👤" : "🫀";
+    avatar.textContent = role === "user" ? "👤" : "⚕️";
 
     const col = document.createElement("div");
     const bubble = document.createElement("div");
@@ -193,7 +262,7 @@
 
     const avatar = document.createElement("div");
     avatar.className = "msg-avatar bot";
-    avatar.textContent = "🫀";
+    avatar.textContent = "⚕️";
 
     const bubble = document.createElement("div");
     bubble.className = "typing-bubble";
@@ -241,7 +310,10 @@
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Tenant-ID": getTenantId(),
+        },
         body: JSON.stringify({ session_id: sessionId, message: msg }),
       });
 
@@ -271,24 +343,25 @@
     if (!confirm("Clear the conversation history?")) return;
 
     try {
-      await fetch(`${API_BASE_URL}/api/v1/chat/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+      await fetch(`${API_BASE_URL}/api/v1/chat/${encodeURIComponent(sessionId)}`, {
+        method: "DELETE",
+        headers: { "X-Tenant-ID": getTenantId() },
+      });
     } catch (_) {}
 
+    const config = TENANT_CONFIG[getTenantId()];
     messagesArea.innerHTML = `
       <div class="welcome-state" id="welcome-state">
-        <div class="welcome-icon-wrap">🫀</div>
+        <div class="welcome-icon-wrap">⚕️</div>
         <h3>Conversation cleared</h3>
-        <p>How can I help you today?</p>
-        <div class="welcome-chips">
-          <div class="chip" onclick="sendChip('What foods are good for liver health?')">🥦 Liver-friendly foods</div>
-          <div class="chip" onclick="sendChip('What are early signs of liver disease?')">🔍 Early warning signs</div>
-          <div class="chip" onclick="sendChip('How does alcohol affect the liver?')">🚫 Alcohol & the liver</div>
-          <div class="chip" onclick="sendChip('What is fatty liver disease?')">📖 Fatty liver explained</div>
+        <p id="welcome-text">${config.welcome}</p>
+        <div class="welcome-chips" id="welcome-chips">
+          ${config.chips.map(c => `<div class="chip" onclick="sendChip('${c.msg}')">${c.label}</div>`).join("")}
         </div>
       </div>`;
 
     sessionId = genId();
-    sessionStorage.setItem("liver_session", sessionId);
+    sessionStorage.setItem("medical_session", sessionId);
     document.getElementById("session-id-display").textContent = sessionId;
   }
 </script>

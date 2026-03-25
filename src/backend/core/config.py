@@ -55,31 +55,27 @@ class Settings(BaseSettings):
      # --- RAG Settings ---
     vector_store_path: str = Field(
         default="./vector_store",
-        description="المسار اللي ChromaDB هيحفظ فيه البيانات",
+        description="The path where the vector store data will be saved",
     )
     collection_name: str = Field(
         default="liver_care_docs",
-        description="اسم الـ collection في ChromaDB",
     )
     embedding_model: str = Field(
         default="paraphrase-multilingual-MiniLM-L12-v2",
-        description="HuggingFace embedding model — بيدعم عربي وانجليزي",
+        description="HuggingFace embedding model identifier for both arabic and english languages",
     )
     chunk_size: int = Field(
         default=500,
-        description="عدد الكلمات في كل chunk",
     )
     chunk_overlap: int = Field(
         default=50,
-        description="عدد الكلمات المتداخلة بين الـ chunks",
     )
     retrieval_top_k: int = Field(
-        default=3,
-        description="عدد الـ chunks اللي هيتجابوا من الـ vector store",
+        default=3
     )
     upload_dir: str = Field(
         default="./uploads",
-        description="المسار اللي الـ PDFs هتترفع فيه",
+        description="The path where the PDFs will be uploaded",
     )
 
 
@@ -92,6 +88,13 @@ class Settings(BaseSettings):
     log_max_bytes: int = Field(default=5_000_000)
 
     log_backup_count: int = Field(default=3)
+
+
+    # --- Multi-tenancy Settings ---
+    allowed_tenants: list[str] = Field(
+    default=["liver", "cardiology", "nephrology"],
+    description="List of allowed tenant IDs for multi-tenancy support",
+)
 
 
 settings = Settings()

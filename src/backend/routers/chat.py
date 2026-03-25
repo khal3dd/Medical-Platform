@@ -1,15 +1,9 @@
 
-from fastapi.responses import JSONResponse
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Header, status
 from enums.responses import ResponseSignal
-
-from schemas.chat import (
-    ChatRequest,
-    ChatResponse,
-    ClearSessionResponse,
-    HealthResponse,
-)
+from schemas.chat import ChatRequest, ChatResponse, ClearSessionResponse, HealthResponse
 from services.chat_service import ChatService
+from core.config import settings
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -49,6 +43,23 @@ def set_chat_service(service: ChatService) -> None:
     logger.info("ChatService injected into router.")
 
 
+
+def get_tenant_id(x_tenant_id: str | None = Header(default=None)) -> str:
+    """
+    بياخد الـ tenant من الـ header ويتحقق منه.
+    """
+    if not x_tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="X-Tenant-ID header is required.",
+        )
+    if x_tenant_id not in settings.allowed_tenants:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown tenant: '{x_tenant_id}'. Allowed: {settings.allowed_tenants}",
+        )
+    return x_tenant_id
+
 # ------------------------------------------------------------------
 # Routes
 # ------------------------------------------------------------------
@@ -56,25 +67,27 @@ def set_chat_service(service: ChatService) -> None:
 @chat_router.post("", response_model=ChatResponse,)
 async def chat(
     request: ChatRequest,
+    tenant_id: str = Depends(get_tenant_id),
     service: ChatService = Depends(get_chat_service),) -> ChatResponse:
    
-    logger.info(f"POST /api/chat | session={request.session_id}")
+    logger.info(f"POST /api/chat | tenant={tenant_id} | session={request.session_id}")
 
     try:
         result = service.handle_message(
             session_id=request.session_id,
             user_message=request.message,
+            tenant_id=tenant_id,
         )
 
     except RuntimeError as e:
-        logger.error(f"Chat error | session={request.session_id} | error={e}")
+        logger.error(f"Chat error | tenant={tenant_id} | session={request.session_id} | error={e}")
         raise  HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=ResponseSignal.LLM_RESPONSE_ERROR.value
         )
     
     except Exception as e:
-        logger.exception(f"Unexpected error in chat | session={request.session_id} | error={e}")
+        logger.exception(f"Unexpected error in chat | tenant={tenant_id} | session={request.session_id} | error={e}")
         raise  HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=ResponseSignal.HTTP_500_INTERNAL_SERVER_ERROR.value
@@ -117,4 +130,4 @@ async def clear_session(
     description="Returns the operational status of the service,returns OK if the service is running.",
 )
 async def health_check() -> HealthResponse:
-    return HealthResponse(status="ok", service="Liver Care Chatbot")
+    return HealthResponse(status="ok", service="Medical Platform")

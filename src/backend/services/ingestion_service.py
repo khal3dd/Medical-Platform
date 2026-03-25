@@ -19,16 +19,16 @@ class IngestionService:
         self._vector_store = vector_store
         logger.info("IngestionService initialized.")
 
-    def ingest_pdf(self, pdf_path: str) -> dict:
+    def ingest_pdf(self, pdf_path: str , tenant_id: str) -> dict:
        
         file_name = Path(pdf_path).name
-        logger.info(f"Starting ingestion | file={file_name}")
+        logger.info(f"Starting ingestion | tenant={tenant_id} | file={file_name}")
 
         try:
             chunks = process_pdf(pdf_path)
 
         except (FileNotFoundError, ValueError) as e:
-            logger.error(f"PDF processing failed | file={file_name} | error={e}")
+            logger.error(f"PDF processing failed | tenant={tenant_id} | file={file_name} | error={e}")
             raise
 
         
@@ -36,7 +36,7 @@ class IngestionService:
             vectors = self._embeddings.embed(chunks)
 
         except Exception as e:
-            logger.error(f"Embedding failed | file={file_name} | error={e}")
+            logger.error(f"Embedding failed | tenant={tenant_id} | file={file_name} | error={e}")
             raise RuntimeError(f"Embedding failed: {e}") from e
 
       
@@ -45,12 +45,13 @@ class IngestionService:
                 chunks=chunks,
                 vectors=vectors,
                 source_file=file_name,
+                tenant_id=tenant_id,
             )
         except Exception as e:
-            logger.error(f"Vector store save failed | file={file_name} | error={e}")
+            logger.error(f"Vector store save failed | tenant={tenant_id} | file={file_name} | error={e}")
             raise RuntimeError(f"Vector store failed: {e}") from e
 
-        logger.info(f"Ingestion complete | file={file_name} | chunks={count}")
+        logger.info(f"Ingestion complete | tenant={tenant_id} | file={file_name} | chunks={count}")
 
         return {
             "file_name": file_name,
@@ -58,10 +59,10 @@ class IngestionService:
             "status": "success",
         }
     
-    def get_chunks_count(self) -> int:
-        return self._vector_store.count()
+    def get_chunks_count(self , tenant_id: str) -> int:
+        return self._vector_store.count(tenant_id)
     
     
-    def delete_document(self, file_name: str) -> bool:
-     return self._vector_store.delete_by_source(file_name)
+    def delete_document(self, file_name: str, tenant_id: str) -> bool:
+     return self._vector_store.delete_by_source(file_name, tenant_id)
     
