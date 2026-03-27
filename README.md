@@ -1,39 +1,52 @@
-#  Liver Care Chatbot
+# ⚕️ Medical Platform
 
-A backend-first AI chatbot that provides **safe, educational liver health support** for patients. Built with FastAPI + Anthropic Claude via OpenRouter + RAG pipeline using ChromaDB and HuggingFace embeddings.
+A backend-first AI medical platform that provides **safe, educational health support** across multiple medical departments. Built with FastAPI + OpenRouter + RAG pipeline using ChromaDB and HuggingFace embeddings.
 
 ---
 
 ## ⚠️ Medical Disclaimer
 
-This chatbot is for **general educational purposes only**. It is **not** a diagnostic tool, does not replace a licensed physician, and does not provide treatment or medication advice. Always consult a qualified healthcare professional for medical concerns.
+This platform is for **general educational purposes only**. It is **not** a diagnostic tool, does not replace a licensed physician, and does not provide treatment or medication advice. Always consult a qualified healthcare professional for medical concerns.
 
 ---
 
 ## Features
 
 - 💬 Conversational chat with multi-turn memory (in-memory, per session)
+- 🏥 Multi-tenant support — each department has its own knowledge base and prompt
 - 🧠 LLM via OpenRouter (any model supported)
-- 📄 PDF ingestion pipeline — upload medical documents and chat with them
+- 📄 PDF ingestion pipeline — upload medical documents per department
 - 🔍 RAG (Retrieval-Augmented Generation) — answers grounded in your documents
-- 🗄️ ChromaDB local vector store
+- 🗄️ ChromaDB local vector store (one collection per tenant)
 - 🤗 HuggingFace local embeddings (multilingual — Arabic + English)
 - 🚨 Emergency escalation for red-flag symptoms
-- 🔒 Out-of-scope refusal for non-liver or unsafe requests
-- 🌐 Minimal plain HTML/CSS/JS frontend served by FastAPI
+- 🔒 Out-of-scope refusal for unsafe requests
+- 🌐 Plain HTML/CSS/JS frontend served by FastAPI
+
+---
+
+## Supported Departments (Tenants)
+
+| Tenant ID | Department |
+|---|---|
+| `liver` | Liver Care / Hepatology |
+| `cardiology` | Cardiology |
+| `nephrology` | Nephrology |
+
+Tenants are configured via `ALLOWED_TENANTS` in `.env`.
 
 ---
 
 ## Project Structure
 ```
-liver-care-chatbot/
+medical-platform/
 ├── src/
 │   ├── backend/
 │   │   ├── main.py                  # FastAPI app entrypoint
 │   │   ├── core/
 │   │   │   ├── config.py            # App settings via pydantic-settings
-│   │   │   ├── logger.py            # Structured logger
-│   │   │   └── prompts.py           # All LLM prompt logic
+│   │   │   ├── logger.py            # Centralized file + console logging
+│   │   │   └── prompts.py           # Dynamic tenant-aware prompt builder
 │   │   ├── enums/
 │   │   │   ├── chat.py              # MessageRole enum
 │   │   │   └── responses.py         # ResponseSignal error codes
@@ -49,12 +62,12 @@ liver-care-chatbot/
 │   │   ├── providers/
 │   │   │   ├── llm_provider.py      # OpenRouter API wrapper
 │   │   │   ├── embeddings.py        # HuggingFace local embeddings
-│   │   │   └── vector_store.py      # ChromaDB wrapper
+│   │   │   └── vector_store.py      # ChromaDB multi-tenant wrapper
 │   │   └── utils/
 │   │       ├── disk.py              # File/disk utilities
 │   │       └── pdf_processor.py     # PDF text extraction + chunking
 │   └── frontend/
-│       ├── index.html               # Chat UI
+│       ├── index.html               # Chat UI with department selector
 │       ├── style.css                # Styling
 │       └── config.json              # Frontend config (API URL)
 ├── requirements.txt
@@ -69,13 +82,13 @@ liver-care-chatbot/
 ### 1. Clone & navigate
 ```bash
 git clone <your-repo-url>
-cd liver-care-chatbot
+cd medical-platform
 ```
 
 ### 2. Create virtual environment
 ```bash
-conda create -n liver-care-chatbot python=3.11 -y
-conda activate liver-care-chatbot
+conda create -n medical-platform python=3.11 -y
+conda activate medical-platform
 ```
 
 ### 3. Install dependencies
@@ -104,11 +117,21 @@ http://localhost:8000
 
 ## API Reference
 
+> All endpoints require the `X-Tenant-ID` header.
+> Example: `X-Tenant-ID: liver`
+
+---
+
 ### Chat
 
-#### `POST /api/v1/chat/`
+#### `POST /api/v1/chat`
 
 Send a message and receive a response.
+
+**Headers:**
+```
+X-Tenant-ID: liver
+```
 
 **Request:**
 ```json
@@ -145,7 +168,12 @@ Health check endpoint.
 
 #### `POST /api/v1/ingestion/upload`
 
-Upload a PDF and add it to the vector store.
+Upload a PDF and add it to the tenant's vector store.
+
+**Headers:**
+```
+X-Tenant-ID: liver
+```
 
 **Request:** `multipart/form-data`
 - `file`: PDF file
@@ -153,6 +181,7 @@ Upload a PDF and add it to the vector store.
 **Response:**
 ```json
 {
+  "tenant_id": "liver",
   "file_name": "liver_guidelines.pdf",
   "chunks_count": 9,
   "status": "success"
@@ -163,18 +192,18 @@ Upload a PDF and add it to the vector store.
 
 #### `DELETE /api/v1/ingestion/document/{file_name}`
 
-Delete a specific document from the vector store by filename.
+Delete a specific document from the tenant's vector store.
 
-**Example:**
+**Headers:**
 ```
-DELETE /api/v1/ingestion/document/liver_guidelines.pdf
+X-Tenant-ID: liver
 ```
 
 **Response:**
 ```json
 {
   "status": "success",
-  "message": "Document 'liver_guidelines.pdf' deleted."
+  "message": "Document 'liver_guidelines.pdf' deleted from tenant 'liver'."
 }
 ```
 
@@ -182,20 +211,42 @@ DELETE /api/v1/ingestion/document/liver_guidelines.pdf
 
 #### `GET /api/v1/ingestion/status`
 
-Get the number of chunks currently stored in the vector store.
+Get the number of chunks stored for a tenant.
+
+**Headers:**
+```
+X-Tenant-ID: liver
+```
 
 **Response:**
 ```json
 {
+  "tenant_id": "liver",
   "chunks_in_store": 9
 }
 ```
 
 ---
 
+## Multi-Tenancy
+
+Each department (tenant) has:
+- Its own **ChromaDB collection** — documents are isolated per tenant
+- Its own **system prompt** — LLM is specialized per department
+- Its own **document knowledge base** — upload PDFs per department
+
+The tenant is identified via the `X-Tenant-ID` header in every request.
+```
+X-Tenant-ID: liver      → liver collection + liver prompt
+X-Tenant-ID: cardiology → cardiology collection + cardiology prompt
+X-Tenant-ID: nephrology → nephrology collection + nephrology prompt
+```
+
+---
+
 ## RAG Pipeline
 ```
-① Upload PDF via POST /api/v1/ingestion/upload
+① Upload PDF via POST /api/v1/ingestion/upload (with X-Tenant-ID)
         ↓
 ② Text extracted from PDF (PyMuPDF)
         ↓
@@ -203,20 +254,20 @@ Get the number of chunks currently stored in the vector store.
         ↓
 ④ Chunks converted to vectors (HuggingFace local model)
         ↓
-⑤ Vectors stored in ChromaDB (persistent, local)
+⑤ Vectors stored in tenant's ChromaDB collection
         ↓
-⑥ User asks a question via POST /api/v1/chat/
+⑥ User asks a question via POST /api/v1/chat (with X-Tenant-ID)
         ↓
 ⑦ Question converted to vector
         ↓
-⑧ Top 3 closest chunks retrieved from ChromaDB
+⑧ Top 3 closest chunks retrieved from tenant's collection
         ↓
 ⑨ Chunks injected into LLM prompt as context
         ↓
 ⑩ LLM answers based on the document content
 ```
 
-If no documents are uploaded, the chatbot falls back to general LLM knowledge.
+If no documents are uploaded for a tenant, the chatbot falls back to general LLM knowledge.
 
 ---
 
@@ -232,13 +283,15 @@ If no documents are uploaded, the chatbot falls back to general LLM knowledge.
 | `APP_HOST` | `0.0.0.0` | Uvicorn host |
 | `APP_PORT` | `8000` | Uvicorn port |
 | `SESSION_MAX_TURNS` | `20` | Max conversation turns per session |
+| `ALLOWED_TENANTS` | `["liver","cardiology","nephrology"]` | Allowed tenant IDs |
 | `VECTOR_STORE_PATH` | `./vector_store` | ChromaDB storage path |
-| `COLLECTION_NAME` | `liver_care_docs` | ChromaDB collection name |
 | `EMBEDDING_MODEL` | `paraphrase-multilingual-MiniLM-L12-v2` | HuggingFace model |
 | `CHUNK_SIZE` | `500` | Words per chunk |
 | `CHUNK_OVERLAP` | `50` | Overlapping words between chunks |
 | `RETRIEVAL_TOP_K` | `3` | Chunks retrieved per query |
 | `UPLOAD_DIR` | `./uploads` | PDF upload directory |
+| `LOG_LEVEL` | `DEBUG` | Logging level |
+| `LOG_FILE` | `./logs/app.log` | Log file path |
 
 ---
 
@@ -263,9 +316,9 @@ If no documents are uploaded, the chatbot falls back to general LLM knowledge.
 
 ## Safety Design
 
-The chatbot enforces safety at the **prompt level**:
+The platform enforces safety at the **prompt level**:
 
-- Strong system prompt defines scope, tone, and boundaries
+- Each tenant has a specialized system prompt scoped to its department
 - Explicit prohibition of diagnosis, prescriptions, and unsafe claims
 - Emergency symptoms trigger immediate urgent-care escalation
 - Out-of-scope questions are politely refused
@@ -280,7 +333,7 @@ The chatbot enforces safety at the **prompt level**:
 | Backend | FastAPI + Uvicorn |
 | LLM | OpenRouter (any model) |
 | Embeddings | HuggingFace `paraphrase-multilingual-MiniLM-L12-v2` |
-| Vector DB | ChromaDB (local) |
+| Vector DB | ChromaDB (local, multi-tenant) |
 | PDF Processing | PyMuPDF |
 | Settings | pydantic-settings |
 | Frontend | Plain HTML/CSS/JS |
