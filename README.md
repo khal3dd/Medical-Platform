@@ -1,4 +1,4 @@
-#  Liver Care Chatbot
+#  Medical-Platform Chatbot
 
 A backend-first AI chatbot that provides **safe, educational liver health support** for patients. Built with FastAPI + Anthropic Claude via OpenRouter + RAG pipeline using ChromaDB and HuggingFace embeddings.
 
