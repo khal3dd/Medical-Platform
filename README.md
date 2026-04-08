@@ -1,6 +1,6 @@
 # ⚕️ Medical Platform
 
-A backend-first AI medical platform that provides **safe, educational health support** across multiple medical departments. Built with FastAPI + OpenRouter + RAG pipeline using ChromaDB and HuggingFace embeddings.
+A backend-first AI medical platform that provides **safe, educational health support** across multiple medical departments. Built with FastAPI + OpenRouter + RAG pipeline using ChromaDB and HuggingFace embeddings, with MongoDB for persistent session storage.
 
 ---
 
@@ -19,6 +19,7 @@ This platform is for **general educational purposes only**. It is **not** a diag
 - 🔍 RAG (Retrieval-Augmented Generation) — answers grounded in your documents
 - 🗄️ ChromaDB local vector store (one collection per tenant)
 - 🤗 HuggingFace local embeddings (multilingual — Arabic + English)
+- 🗃️ MongoDB for persistent session storage (via Docker)
 - 🚨 Emergency escalation for red-flag symptoms
 - 🔒 Out-of-scope refusal for unsafe requests
 - 🌐 Plain HTML/CSS/JS frontend served by FastAPI
@@ -37,9 +38,13 @@ Tenants are configured via `ALLOWED_TENANTS` in `.env`.
 
 ---
 
+
 ## Project Structure
 ```
 medical-platform/
+├── docker/
+│   ├── docker-compose.yml           # MongoDB container setup
+│   └── mongodb_data/                # Persistent MongoDB data volume
 ├── src/
 │   ├── backend/
 │   │   ├── main.py                  # FastAPI app entrypoint
@@ -47,6 +52,8 @@ medical-platform/
 │   │   │   ├── config.py            # App settings via pydantic-settings
 │   │   │   ├── logger.py            # Centralized file + console logging
 │   │   │   └── prompts.py           # Dynamic tenant-aware prompt builder
+│   │   ├── database/
+│   │   │   └── mongodb.py           # MongoDB client + collections + connection check
 │   │   ├── enums/
 │   │   │   ├── chat.py              # MessageRole enum
 │   │   │   └── responses.py         # ResponseSignal error codes
@@ -73,43 +80,55 @@ medical-platform/
 ├── requirements.txt
 ├── .env.example
 └── README.md
-```
 
 ---
+
 
 ## Quickstart
 
 ### 1. Clone & navigate
+
 ```bash
 git clone <your-repo-url>
 cd medical-platform
 ```
 
 ### 2. Create virtual environment
+
 ```bash
 conda create -n medical-platform python=3.11 -y
 conda activate medical-platform
 ```
 
 ### 3. Install dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 4. Configure environment
+
 ```bash
 cp .env.example .env
 # Edit .env and add your OPENROUTER_API_KEY
 ```
 
-### 5. Run the backend
+### 5. Start MongoDB via Docker
+
+```bash
+cd docker
+docker compose up -d
+cd ..
+```
+
+### 6. Run the backend
+
 ```bash
 cd src/backend
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 6. Open the frontend
-```
+### 7. Open the frontend
 http://localhost:8000
 ```
 
@@ -126,10 +145,8 @@ http://localhost:8000
 
 #### `POST /api/v1/chat`
 
-Send a message and receive a response.
-
 **Headers:**
-```
+
 X-Tenant-ID: liver
 ```
 

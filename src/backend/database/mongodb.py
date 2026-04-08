@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 client = AsyncIOMotorClient(settings.MONGODB_URL)
 db = client[settings.MONGODB_DATABASE]
 
-# تعريف الكولكشن
+# Collections def
 sessions_collection = db["sessions"]
 
 async def check_database_connection():
